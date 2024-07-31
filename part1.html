@@ -1,0 +1,2550 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Making your first Phaser 3 Game - Part 1</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.js"></script>
+    <style type="text/css">
+      body {
+        margin: 0;
+      }
+
+      @font-face {
+        font-family: "PFStardust";
+        src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/PFStardust.woff")
+          format("woff");
+        font-weight: normal;
+        font-style: normal;
+      }
+      .preload {
+        font-family: "PFStardust";
+      }
+    </style>
+  </head>
+  <body>
+    <div class="preload" style="position: absolute; top: -9999px">preload</div>
+
+    <script type="text/javascript">
+      class Boot extends Phaser.Scene {
+        constructor() {
+          super("Boot");
+        }
+
+        grounds;
+        player;
+        helpText;
+
+        preload() {
+          this.load.spritesheet("another", "assets/another.png", {
+            frameWidth: 32,
+            frameHeight: 32,
+          });
+
+          this.load.image("title", "assets/title.png");
+          this.load.image("ground_v", "assets/ground_v.png");
+          this.load.spritesheet("kneel", "assets/kneel.png", {
+            frameWidth: 64,
+            frameHeight: 64,
+          });
+
+          this.load.image("bg_gray", "assets/bg_gray.png", {
+            frameWidth: 800,
+            frameHeight: 600,
+          });
+        }
+
+        create() {
+          this.bg_gray = this.add.image(500, 200, "bg_gray");
+
+          this.another = this.add.sprite(160, 500, "another");
+
+          this.anims.create({
+            key: "another.float",
+            frames: this.anims.generateFrameNumbers("another", {
+              start: 0,
+              end: 2,
+            }),
+            frameRate: 4,
+            repeat: -1,
+          });
+          this.another.anims.play("another.float");
+
+          this.add.image(400, 300, "title");
+          this.helpText = this.add.text(250, 400, "", {
+            fontSize: "18px",
+            fill: "#fff",
+          });
+          this.helpText.setText("엔터 키 혹은 터치로 게임을 시작하세요.");
+          this.time.addEvent({
+            delay: 100,
+            callback: () => {
+              this.helpText.visible = true;
+            },
+            callbackScope: this,
+            loop: true,
+          });
+          this.time.addEvent({
+            delay: 1200,
+            callback: () => {
+              this.helpText.visible = false;
+            },
+            callbackScope: this,
+            loop: true,
+          });
+
+          this.grounds = this.physics.add.staticGroup();
+          this.grounds
+            .create(400, 568, "ground_v")
+            .setScale(16, 2)
+            .refreshBody();
+
+          this.player = this.physics.add.sprite(100, 506, "kneel");
+
+          this.anims.create({
+            key: "idle",
+            frames: this.anims.generateFrameNumbers("kneel", {
+              start: 0,
+              end: 4,
+            }),
+            frameRate: 4,
+            repeat: -1,
+          });
+          this.player.anims.play("idle");
+
+          this.physics.add.collider(this.player, this.grounds);
+
+          this.input.keyboard.on("keydown-ENTER", () => {
+            this.scene.start("Prologue");
+          });
+        }
+      }
+
+      class Prologue extends Phaser.Scene {
+        constructor() {
+          super("Prologue");
+        }
+
+        dialogIndex = 1;
+        currentTextObject = null;
+        currentBubble = null;
+        eatenItemCount = 0;
+        face = "right";
+        isChating = false;
+        isPass15 = false;
+
+        preload() {
+          this.load.spritesheet("another", "assets/another.png", {
+            frameWidth: 32,
+            frameHeight: 32,
+          });
+          this.load.image("ground_v", "assets/ground_v.png");
+          this.load.image("item1", "assets/item1.png");
+          this.load.image("item2", "assets/item2.png");
+          this.load.image("o", "assets/o.png");
+          this.load.image("x", "assets/x.png");
+          this.load.image("q", "assets/q.png");
+          this.load.image("right_arrow", "assets/right_arrow.png");
+          this.load.spritesheet("kneel", "assets/kneel.png", {
+            frameWidth: 64,
+            frameHeight: 64,
+          });
+          this.load.spritesheet("dude", "assets/me.png", {
+            frameWidth: 64,
+            frameHeight: 64,
+          });
+
+          this.load.image("bg_gray", "assets/bg_gray.png", {
+            frameWidth: 800,
+            frameHeight: 600,
+          });
+        }
+
+        create() {
+          this.bg_gray = this.add.image(500, 200, "bg_gray");
+
+          this.another = this.add.sprite(160, 500, "another");
+
+          this.anims.create({
+            key: "another.float",
+            frames: this.anims.generateFrameNumbers("another", {
+              start: 0,
+              end: 3,
+            }),
+            frameRate: 4,
+            repeat: -1,
+          });
+          this.another.anims.play("another.float");
+
+          this.grounds = this.physics.add.staticGroup();
+          this.grounds
+            .create(400, 568, "ground_v")
+            .setScale(16, 2)
+            .refreshBody();
+
+          this.player = this.physics.add.sprite(100, 506, "kneel");
+
+          this.anims.create({
+            key: "idle",
+            frames: this.anims.generateFrameNumbers("kneel", {
+              start: 0,
+              end: 4,
+            }),
+            frameRate: 4,
+            repeat: -1,
+          });
+          this.player.anims.play("idle");
+
+          this.physics.add.collider(this.player, this.grounds);
+          this.showNextDialogue();
+          this.input.keyboard.on("keydown-ENTER", this.showNextDialogue, this);
+        }
+
+        update() {
+          if (this.dialogIndex < 15) return;
+
+          if (this.itemEffectActive) return;
+
+          // 특정 위치에 도달했는지 체크
+          const targetX = 750;
+          const targetY = 500;
+          const tolerance = 10; // 위치에 도달했는지 판단할 허용 오차
+
+          if (
+            Phaser.Math.Distance.Between(
+              this.player.x,
+              this.player.y,
+              targetX,
+              targetY
+            ) < tolerance
+          ) {
+            this.scene.start("Stage1");
+          }
+
+          const cursors = this.input.keyboard.createCursorKeys();
+          const player = this.player;
+          player.setCollideWorldBounds(true);
+
+          if (cursors.left.isDown) {
+            player.setVelocityX(-160);
+            if (player.body.touching.down) {
+              this.face = "left";
+              player.anims.play("left", true);
+            }
+          } else if (cursors.right.isDown) {
+            player.setVelocityX(160);
+            if (player.body.touching.down) {
+              this.face = "right";
+              player.anims.play("right", true);
+            }
+          } else {
+            player.setVelocityX(0);
+
+            if (player.body.touching.down) {
+              player.anims.play(`turn.${this.face}`);
+            }
+          }
+
+          if (cursors.up.isDown && player.body.touching.down) {
+            player.anims.play(`jump.${this.face}`, true);
+            player.setVelocityY(-300);
+          }
+
+          // 점프 애니메이션이 끝나면 착지 후 다른 애니메이션으로 전환
+          player.on("animationcomplete", function (animation) {
+            if (animation.key === "jump") {
+              if (cursors.left.isDown) {
+                player.anims.play("left", true);
+              } else if (cursors.right.isDown) {
+                player.anims.play("right", true);
+              } else {
+                player.anims.play(`turn.${this.face}`);
+              }
+            }
+          });
+
+          this.follow(this.player, this.another, 40, 0);
+        }
+
+        follow(object, target, gapX, gapY) {
+          target.setPosition(object.x - gapX, object.y - gapY);
+        }
+
+        showNextDialogue() {
+          if (this.isChating) return;
+
+          switch (this.dialogIndex) {
+            case 1: {
+              this.isChating = true;
+              this.createSpeechBubble(160, 450, 90, 30, "???", 20);
+              this.dialogIndex++;
+              break;
+            }
+            case 2: {
+              this.isChating = true;
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(120, 450, 90, 30, "...", 20);
+              this.dialogIndex++;
+              break;
+            }
+            case 3: {
+              this.isChating = true;
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(160, 450, 90, 30, "🤪😜", 20);
+              this.dialogIndex++;
+              break;
+            }
+
+            case 4: {
+              this.isChating = true;
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(160, 450, 120, 30, "😛+💩=?", 20);
+              this.dialogIndex++;
+              break;
+            }
+
+            case 5: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(160, 450, 120, 30, "😛+💩=🤢", 20);
+              this.dialogIndex++;
+              break;
+            }
+
+            case 6: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(160, 450, 90, 30, "😂🤣😂", 20);
+              this.dialogIndex++;
+              break;
+            }
+
+            case 7: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(120, 450, 90, 30, "...", 20);
+              this.dialogIndex++;
+              break;
+            }
+
+            case 8: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(160, 450, 90, 30, "👧🏻❤️🎡", 20);
+              this.dialogIndex++;
+              break;
+            }
+            case 9: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(160, 450, 90, 30, "🚌💨💨", 20);
+              this.dialogIndex++;
+              break;
+            }
+            case 10: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(120, 450, 140, 30, " 귀찮아...", 20);
+              this.dialogIndex++;
+              break;
+            }
+
+            case 11: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(160, 450, 110, 30, "🥺🥺", 20);
+              this.dialogIndex++;
+              break;
+            }
+            case 12: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.another.y = this.another.y - 20;
+              setTimeout(() => {
+                this.another.x = this.another.x - 20;
+              }, 500);
+              setTimeout(() => {
+                this.another.y = this.another.y + 20;
+              }, 1000);
+              setTimeout(() => {
+                this.another.x = this.another.x + 20;
+                this.isChating = false;
+              }, 1500);
+
+              this.dialogIndex++;
+              break;
+            }
+            case 13: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(120, 450, 130, 30, " 알았어...", 20);
+
+              this.dialogIndex++;
+              break;
+            }
+            case 14: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(120, 450, 140, 30, " (괜찮을까...)", 20);
+
+              this.dialogIndex++;
+              break;
+            }
+            case 15: {
+              if (this.isPass15) return;
+              this.isPass15 = true;
+              this.player.stop();
+              this.player.setTexture("dude");
+              this.player.setFrame(4);
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.anims.create({
+                key: "left",
+                frames: this.anims.generateFrameNumbers("dude", {
+                  start: 1,
+                  end: 4,
+                }),
+                frameRate: 10,
+                repeat: -1,
+              });
+
+              this.anims.create({
+                key: "turn.left",
+                frames: [{ key: "dude", frame: 0 }],
+                frameRate: 20,
+              });
+
+              this.anims.create({
+                key: "turn.right",
+                frames: [{ key: "dude", frame: 5 }],
+                frameRate: 20,
+              });
+
+              this.anims.create({
+                key: "right",
+                frames: this.anims.generateFrameNumbers("dude", {
+                  start: 6,
+                  end: 9,
+                }),
+                frameRate: 10,
+                repeat: -1,
+              });
+
+              this.anims.create({
+                key: "jump.left",
+                frames: this.anims.generateFrameNumbers("dude", {
+                  start: 17,
+                  end: 21,
+                }),
+                frameRate: 10,
+                repeat: 0,
+              });
+              this.anims.create({
+                key: "jump.right",
+                frames: this.anims.generateFrameNumbers("dude", {
+                  start: 11,
+                  end: 15,
+                }),
+                frameRate: 10,
+                repeat: 0,
+              });
+
+              let count = 0;
+              const handleKeyDown = () => {
+                count++;
+                if (count >= 2) {
+                  this.dialogIndex++;
+                  this.showNextDialogue();
+                  this.input.keyboard.off("keydown-LEFT", handleKeyDown, this);
+                  this.input.keyboard.off("keydown-RIGHT", handleKeyDown, this);
+                  this.input.keyboard.off("keydown-UP", handleKeyDown, this);
+                }
+              };
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+              this.createDialogBox("북극성", " ⬅️ ➡️⬆️ 를 눌러 이동하세요.");
+              this.input.keyboard.on("keydown-LEFT", handleKeyDown, this);
+              this.input.keyboard.on("keydown-RIGHT", handleKeyDown, this);
+              this.input.keyboard.on("keydown-UP", handleKeyDown, this);
+              break;
+            }
+
+            case 16: {
+              this.dialogBox.setVisible(false);
+              this.nameText.setVisible(false);
+              this.dialogText.setVisible(false);
+
+              this.createDialogBox("북극성", "");
+
+              this.o = this.add.image(150, 300, "o");
+              this.x = this.add.image(150, 335, "x");
+              this.item1 = this.add.image(190, 300, "item1");
+              this.item2 = this.add.image(190, 335, "item2");
+              this.q1 = this.add.image(230, 300, "q");
+              this.q2 = this.add.image(230, 335, "q");
+              this.q3 = this.add.image(270, 300, "q");
+              this.q4 = this.add.image(270, 335, "q");
+              this.q5 = this.add.image(310, 300, "q");
+              this.q6 = this.add.image(310, 335, "q");
+
+              this.items = this.physics.add.group();
+
+              const itemTypes = ["item1", "item2"];
+              const itemCount = 4; // 총 아이템 수
+              let startX = 190; // 초기 x 위치
+              const startY = 400; // 초기 y 위치
+              const stepX = 100; // x 간격
+
+              for (let i = 0; i < itemCount; i++) {
+                const itemType = itemTypes[i % itemTypes.length];
+                this.items.create(startX, startY, itemType);
+                startX += stepX;
+              }
+
+              // 아이템과 플랫폼 간의 충돌 설정
+              this.physics.add.collider(this.items, this.grounds);
+              this.physics.add.overlap(
+                this.player,
+                this.items,
+                this.overlapItem,
+                null,
+                this
+              );
+
+              this.dialogIndex++;
+
+              break;
+            }
+
+            case 17: {
+              this.dialogBox.setVisible(false);
+              this.nameText.setVisible(false);
+              this.dialogText.setVisible(false);
+              this.item1.setVisible(false);
+              this.item2.setVisible(false);
+              this.o.setVisible(false);
+              this.x.setVisible(false);
+              this.q1.setVisible(false);
+              this.q2.setVisible(false);
+              this.q3.setVisible(false);
+              this.q4.setVisible(false);
+              this.q5.setVisible(false);
+              this.q6.setVisible(false);
+
+              const right_arrow = this.add.image(750, 500, "right_arrow");
+
+              this.tweens.add({
+                targets: right_arrow,
+                x: { from: 750, to: 760 },
+                alpha: { from: 0, to: 1 },
+                duration: 1000,
+                ease: "Sine.easeInOut",
+                repeat: -1,
+              });
+
+              break;
+            }
+          }
+        }
+
+        overlapItem(player, item) {
+          item.disableBody(true, true);
+          this.eatenItemCount++;
+          if (item.texture.key === "item1") {
+            // item1의 경우
+            this.showFloatingText(player, "+1", "green");
+          } else if (item.texture.key === "item2") {
+            // item2의 경우
+            this.showFloatingText(player, "-1", "red");
+            this.tweens.add({
+              targets: player,
+              tint: 0xff0000, // 빨간색으로 변환
+              duration: 100,
+              yoyo: true,
+              onComplete: () => {
+                player.clearTint();
+              },
+            });
+            this.itemEffectActive = true;
+            player.setVelocityX(-50);
+            player.setVelocityY(-100);
+            // 0.5초 후에 속도를 다시 0으로 설정
+            this.time.delayedCall(
+              500,
+              () => {
+                this.itemEffectActive = false; // 효과 비활성화
+              },
+              [],
+              this
+            );
+          }
+
+          if (this.eatenItemCount >= 2) {
+            this.showNextDialogue();
+          }
+        }
+
+        showFloatingText(player, text, color) {
+          const floatingText = this.add.text(player.x, player.y - 50, text, {
+            font: "32px Arial",
+            fill: color,
+          });
+          this.tweens.add({
+            targets: floatingText,
+            y: player.y - 100,
+            alpha: 0,
+            duration: 1000,
+            ease: "Power1",
+            onComplete: () => {
+              floatingText.destroy();
+            },
+          });
+        }
+
+        createSpeechBubble(x, y, width, height, quote, fontSize) {
+          const bubbleWidth = width;
+          const bubbleHeight = height;
+          const bubblePadding = 10;
+          const arrowHeight = bubbleHeight / 4;
+
+          const bubble = this.add.graphics({ x: x, y: y });
+
+          //  Bubble shadow
+          bubble.fillStyle(0x222222, 0.5);
+          bubble.fillRoundedRect(6, 6, bubbleWidth, bubbleHeight, 16);
+
+          //  Bubble color
+          bubble.fillStyle(0xffffff, 1);
+
+          //  Bubble outline line style
+          bubble.lineStyle(4, 0x565656, 1);
+
+          //  Bubble shape and outline
+          bubble.strokeRoundedRect(0, 0, bubbleWidth, bubbleHeight, 16);
+          bubble.fillRoundedRect(0, 0, bubbleWidth, bubbleHeight, 16);
+
+          //  Calculate arrow coordinates
+          const point1X = Math.floor(bubbleWidth / 7);
+          const point1Y = bubbleHeight;
+          const point2X = Math.floor((bubbleWidth / 7) * 2);
+          const point2Y = bubbleHeight;
+          const point3X = Math.floor(bubbleWidth / 7);
+          const point3Y = Math.floor(bubbleHeight + arrowHeight);
+
+          //  Bubble arrow shadow
+          bubble.lineStyle(4, 0x222222, 0.5);
+          bubble.lineBetween(point2X - 1, point2Y + 6, point3X + 2, point3Y);
+
+          //  Bubble arrow fill
+          bubble.fillTriangle(
+            point1X,
+            point1Y,
+            point2X,
+            point2Y,
+            point3X,
+            point3Y
+          );
+          bubble.lineStyle(2, 0x565656, 1);
+          bubble.lineBetween(point2X, point2Y, point3X, point3Y);
+          bubble.lineBetween(point1X, point1Y, point3X, point3Y);
+
+          const content = this.add.text(0, 0, "", {
+            fontFamily: "PFStardust",
+            fontSize,
+            color: "#000000",
+            wordWrap: { width: bubbleWidth - bubblePadding * 2 },
+          });
+
+          content.setOrigin(0.5, 0.25);
+
+          const b = content.getBounds();
+
+          content.setPosition(
+            bubble.x + bubbleWidth / 2 - b.width / 2,
+            bubble.y + bubbleHeight / 2 - b.height / 2 + 5
+          );
+          this.typeText(content, quote, 50);
+
+          this.currentTextObject = content;
+          this.currentBubble = bubble;
+        }
+
+        typeText(textObject, text, delay) {
+          let index = 0;
+          const length = text.length;
+
+          return this.time.addEvent({
+            delay: delay,
+            callback: () => {
+              textObject.text += text[index];
+              index++;
+              if (index === length) {
+                this.isChating = false;
+                this.time.removeEvent(this);
+              }
+            },
+            repeat: length - 1,
+          });
+        }
+
+        createDialogBox(name, dialog) {
+          const dialogWidth = 600;
+          const dialogHeight = 150;
+          const dialogX = this.cameras.main.centerX - dialogWidth / 2;
+          const dialogY = this.cameras.main.centerY - dialogHeight / 2;
+
+          // 다이얼로그 박스 그래픽
+          this.dialogBox = this.add.graphics();
+          this.dialogBox.fillStyle(0x000000, 0.7);
+          this.dialogBox.fillRoundedRect(
+            dialogX,
+            dialogY,
+            dialogWidth,
+            dialogHeight,
+            20
+          );
+          this.dialogBox.lineStyle(4, 0xffffff, 1);
+          this.dialogBox.strokeRoundedRect(
+            dialogX,
+            dialogY,
+            dialogWidth,
+            dialogHeight,
+            20
+          );
+
+          // 말하는 사람의 이름 텍스트
+          this.nameText = this.add.text(dialogX + 20, dialogY + 20, "", {
+            fontFamily: "PFStardust",
+            fontSize: 24,
+            color: "#fff",
+            fontStyle: "bold",
+          });
+
+          // 대사 텍스트
+          this.dialogText = this.add.text(dialogX + 20, dialogY + 60, "", {
+            fontFamily: "PFStardust",
+            fontSize: 20,
+            color: "#fff",
+            wordWrap: { width: dialogWidth - 40, useAdvancedWrap: true },
+          });
+
+          this.nameText.setText(name);
+          this.dialogText.setText(dialog);
+        }
+      }
+
+      class Stage1 extends Phaser.Scene {
+        constructor() {
+          super("Stage1");
+        }
+
+        face = "right";
+
+        preload() {
+          this.load.image("ground_v", "assets/ground_v.png");
+          this.load.image("ground_h", "assets/ground_h.png");
+          this.load.spritesheet("dude", "assets/me.png", {
+            frameWidth: 64,
+            frameHeight: 64,
+          });
+          this.load.image("trampolin", "assets/trampolin.png");
+
+          this.load.image("right_arrow", "assets/right_arrow.png");
+
+          this.load.spritesheet("another", "assets/another.png", {
+            frameWidth: 32,
+            frameHeight: 32,
+          });
+
+          this.load.image("+1", "assets/item1.png");
+          this.load.image("-1", "assets/item2.png");
+          this.load.image("+2", "assets/item3.png");
+          this.load.image("-2", "assets/item4.png");
+
+          this.load.image("o", "assets/o.png");
+          this.load.image("x", "assets/x.png");
+          this.load.image("q", "assets/q.png");
+        }
+
+        create() {
+          this.another = this.add.sprite(-50, 500, "another");
+
+          this.anims.create({
+            key: "another.float",
+            frames: this.anims.generateFrameNumbers("another", {
+              start: 0,
+              end: 2,
+            }),
+            frameRate: 4,
+            repeat: -1,
+          });
+          this.another.anims.play("another.float");
+
+          this.grounds = this.physics.add.staticGroup();
+          this.grounds
+            .create(400, 568, "ground_v")
+            .setScale(16, 2)
+            .refreshBody();
+
+          this.grounds
+            .create(650, 500, "ground_v")
+            .setScale(6, 1)
+            .refreshBody();
+
+          // 출구
+          this.grounds
+            .create(750 + 32, 170, "ground_v")
+            .setScale(2, 1)
+            .refreshBody();
+
+          // 큰돌 발바닥
+          this.grounds
+            .create(200, 350, "ground_v")
+            .setScale(8, 1)
+            .refreshBody();
+
+          // 큰돌 몸통
+          this.grounds
+            .create(250, 300, "ground_v")
+            .setScale(2, 1)
+            .refreshBody();
+
+          // 큰돌 머리
+          this.grounds
+            .create(220, 250, "ground_v")
+            .setScale(1, 1)
+            .refreshBody();
+
+          // 큰 돌
+          this.grounds
+            .create(100, 270, "ground_v")
+            .setScale(4, 4)
+            .refreshBody();
+
+          this.grounds
+            .create(200, 120, "ground_v")
+            .setScale(4, 1)
+            .refreshBody();
+
+          this.grounds
+            .create(420, 120, "ground_v")
+            .setScale(1, 0.5)
+            .refreshBody();
+
+          this.grounds
+            .create(570, 120, "ground_v")
+            .setScale(1, 0.5)
+            .refreshBody();
+
+          this.grounds
+            .create(700, 340, "ground_h")
+            .setScale(1, 6)
+            .refreshBody();
+
+          this.trampolins = this.physics.add.staticGroup();
+
+          // 그룹에 트램펄린 추가
+          this.trampolins.create(650, 500 - 32, "trampolin");
+          this.trampolins.create(20, 190, "trampolin");
+
+          // 바닥과 트램펄린 그룹 간의 충돌 설정
+          this.physics.add.collider(this.grounds, this.trampolins);
+
+          this.player = this.physics.add.sprite(100, 506, "dude");
+          this.physics.add.collider(this.player, this.grounds);
+          this.physics.add.collider(
+            this.player,
+            this.trampolins,
+            this.overlapTrampolin,
+            null,
+            this
+          );
+
+          this.plusItem = this.physics.add.group();
+          this.plusItem.create(200, 0, "+2");
+          this.plusItem.create(575, 0, "+2");
+
+          this.physics.add.collider(this.plusItem, this.grounds);
+          this.physics.add.overlap(
+            this.player,
+            this.plusItem,
+            this.overlapItem,
+            null,
+            this
+          );
+
+          this.right_arrow = this.add.image(750, 130, "right_arrow");
+          this.tweens.add({
+            targets: this.right_arrow,
+            x: { from: 750, to: 760 },
+            alpha: { from: 0, to: 1 },
+            duration: 1000,
+            ease: "Sine.easeInOut",
+            repeat: -1,
+          });
+
+          this.minusItem = this.physics.add.group();
+          this.minusItem.create(580, 200, "-2");
+
+          this.physics.add.collider(this.minusItem, this.grounds);
+          this.physics.add.overlap(
+            this.player,
+            this.minusItem,
+            this.overlapItem,
+            null,
+            this
+          );
+
+          this.anims.create({
+            key: "left",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 1,
+              end: 4,
+            }),
+            frameRate: 10,
+            repeat: -1,
+          });
+
+          this.anims.create({
+            key: "turn.left",
+            frames: [{ key: "dude", frame: 0 }],
+            frameRate: 20,
+          });
+
+          this.anims.create({
+            key: "turn.right",
+            frames: [{ key: "dude", frame: 5 }],
+            frameRate: 20,
+          });
+
+          this.anims.create({
+            key: "right",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 6,
+              end: 9,
+            }),
+            frameRate: 10,
+            repeat: -1,
+          });
+
+          this.anims.create({
+            key: "jump.left",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 17,
+              end: 21,
+            }),
+            frameRate: 10,
+            repeat: 0,
+          });
+          this.anims.create({
+            key: "jump.right",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 11,
+              end: 15,
+            }),
+            frameRate: 10,
+            repeat: 0,
+          });
+
+          this.createDialogBox("북극성", "");
+          this.o = this.add.image(150, 300, "o");
+          this.x = this.add.image(150, 335, "x");
+          this.item1 = this.add.image(190, 300, "+1");
+          this.item2 = this.add.image(190, 335, "-1");
+          this.item3 = this.add.image(230, 300, "+2");
+          this.item4 = this.add.image(230, 335, "-2");
+
+          this.q3 = this.add.image(270, 300, "q");
+          this.q4 = this.add.image(270, 335, "q");
+          this.q5 = this.add.image(310, 300, "q");
+          this.q6 = this.add.image(310, 335, "q");
+
+          this.input.keyboard.on("keydown-ENTER", this.hideDialog, this);
+          this.input.keyboard.on("keydown-UP", this.hideDialog, this);
+        }
+
+        hideDialog() {
+          this.dialogBox.setVisible(false);
+          this.nameText.setVisible(false);
+          this.dialogText.setVisible(false);
+
+          this.o.setVisible(false);
+          this.x.setVisible(false);
+          this.item1.setVisible(false);
+          this.item2.setVisible(false);
+          this.item3.setVisible(false);
+          this.item4.setVisible(false);
+
+          this.q3.setVisible(false);
+          this.q4.setVisible(false);
+          this.q5.setVisible(false);
+          this.q6.setVisible(false);
+        }
+
+        follow(object, target, gapX, gapY) {
+          target.setPosition(object.x - gapX, object.y - gapY);
+        }
+
+        createDialogBox(name, dialog) {
+          const dialogWidth = 600;
+          const dialogHeight = 150;
+          const dialogX = this.cameras.main.centerX - dialogWidth / 2;
+          const dialogY = this.cameras.main.centerY - dialogHeight / 2;
+
+          // 다이얼로그 박스 그래픽
+          this.dialogBox = this.add.graphics();
+          this.dialogBox.fillStyle(0x000000, 0.7);
+          this.dialogBox.fillRoundedRect(
+            dialogX,
+            dialogY,
+            dialogWidth,
+            dialogHeight,
+            20
+          );
+          this.dialogBox.lineStyle(4, 0xffffff, 1);
+          this.dialogBox.strokeRoundedRect(
+            dialogX,
+            dialogY,
+            dialogWidth,
+            dialogHeight,
+            20
+          );
+
+          // 말하는 사람의 이름 텍스트
+          this.nameText = this.add.text(dialogX + 20, dialogY + 20, "", {
+            fontFamily: "PFStardust",
+            fontSize: 24,
+            color: "#fff",
+            fontStyle: "bold",
+          });
+
+          // 대사 텍스트
+          this.dialogText = this.add.text(dialogX + 20, dialogY + 60, "", {
+            fontFamily: "PFStardust",
+            fontSize: 20,
+            color: "#fff",
+            wordWrap: { width: dialogWidth - 40, useAdvancedWrap: true },
+          });
+
+          this.nameText.setText(name);
+          this.dialogText.setText(dialog);
+        }
+
+        overlapItem(player, item) {
+          item.disableBody(true, true);
+
+          if (item.texture.key.startsWith("+")) {
+            // item1의 경우
+            this.showFloatingText(player, "+1", "green");
+          } else if (item.texture.key.startsWith("-")) {
+            // item2의 경우
+            this.showFloatingText(player, "-1", "red");
+            this.tweens.add({
+              targets: player,
+              tint: 0xff0000, // 빨간색으로 변환
+              duration: 100,
+              yoyo: true,
+              onComplete: () => {
+                player.clearTint();
+              },
+            });
+
+            this.itemEffectActive = true;
+            player.setVelocityX(-50);
+            player.setVelocityY(-100);
+
+            // 0.5초 후에 속도를 다시 0으로 설정
+            this.time.delayedCall(
+              500,
+              () => {
+                this.itemEffectActive = false; // 효과 비활성화
+              },
+              [],
+              this
+            );
+          }
+        }
+
+        showFloatingText(player, text, color) {
+          const floatingText = this.add.text(player.x, player.y - 50, text, {
+            font: "32px Arial",
+            fill: color,
+          });
+          this.tweens.add({
+            targets: floatingText,
+            y: player.y - 100,
+            alpha: 0,
+            duration: 1000,
+            ease: "Power1",
+            onComplete: () => {
+              floatingText.destroy();
+            },
+          });
+        }
+
+        overlapTrampolin() {
+          this.player.anims.play(`jump.${this.face}`, true);
+          this.player.setVelocityY(-600);
+        }
+
+        update() {
+          const cursors = this.input.keyboard.createCursorKeys();
+          const player = this.player;
+          player.setCollideWorldBounds(true);
+          this.follow(this.player, this.another, 40, 0);
+
+          if (cursors.left.isDown) {
+            player.setVelocityX(-160);
+            if (player.body.touching.down) {
+              this.face = "left";
+              player.anims.play("left", true);
+            }
+          } else if (cursors.right.isDown) {
+            player.setVelocityX(160);
+            if (player.body.touching.down) {
+              this.face = "right";
+              player.anims.play("right", true);
+            }
+          } else {
+            player.setVelocityX(0);
+
+            if (player.body.touching.down) {
+              player.anims.play(`turn.${this.face}`);
+            }
+          }
+
+          if (cursors.up.isDown && player.body.touching.down) {
+            player.anims.play(`jump.${this.face}`, true);
+            player.setVelocityY(-300);
+          }
+
+          // 점프 애니메이션이 끝나면 착지 후 다른 애니메이션으로 전환
+          player.on("animationcomplete", function (animation) {
+            if (animation.key === "jump") {
+              if (cursors.left.isDown) {
+                player.anims.play("left", true);
+              } else if (cursors.right.isDown) {
+                player.anims.play("right", true);
+              } else {
+                player.anims.play("turn");
+              }
+            }
+          });
+
+          // 특정 위치에 도달했는지 체크
+          const targetX = 750;
+          const targetY = 130;
+          const tolerance = 10; // 위치에 도달했는지 판단할 허용 오차
+
+          if (
+            Phaser.Math.Distance.Between(
+              this.player.x,
+              this.player.y,
+              targetX,
+              targetY
+            ) < tolerance
+          ) {
+            this.scene.start("Stage2");
+          }
+        }
+      }
+
+      class Epilogue extends Phaser.Scene {
+        constructor() {
+          super("Epilogue");
+        }
+
+        isChating = false;
+        dialogIndex = 1;
+
+        preload() {
+          this.load.spritesheet("another_f", "assets/another_final.png", {
+            frameWidth: 32,
+            frameHeight: 32,
+          });
+          this.load.spritesheet("dude", "assets/me.png", {
+            frameWidth: 64,
+            frameHeight: 64,
+          });
+          this.load.image("ground_v", "assets/ground_v.png");
+
+          this.load.spritesheet("bg", "assets/bg.png", {
+            frameWidth: 800,
+            frameHeight: 600,
+          });
+
+          this.load.image("bg_gray", "assets/bg_gray.png", {
+            frameWidth: 800,
+            frameHeight: 600,
+          });
+
+          this.load.spritesheet("kneel", "assets/kneel.png", {
+            frameWidth: 64,
+            frameHeight: 64,
+          });
+        }
+
+        create() {
+          this.bg = this.add.sprite(500, 200, "bg");
+          this.bg_gray = this.add.image(500, 200, "bg_gray");
+
+          this.another_f = this.add.sprite(-50, 500, "another_f");
+          this.player = this.physics.add.sprite(0, 506, "dude");
+          this.kneel = this.add.sprite(600, 506, "kneel");
+
+          this.kneel.setAlpha(0.8);
+          this.anims.create({
+            key: "idle",
+            frames: this.anims.generateFrameNumbers("kneel", {
+              start: 0,
+              end: 4,
+            }),
+            frameRate: 4,
+            repeat: -1,
+          });
+          this.player.anims.play("idle");
+
+          this.anims.create({
+            key: "bg",
+            frames: this.anims.generateFrameNumbers("bg", {
+              start: 0,
+              end: 18,
+            }),
+            frameRate: 10,
+            repeat: -1,
+          });
+          this.bg.anims.play("bg");
+
+          this.anims.create({
+            key: "another_f.float",
+            frames: this.anims.generateFrameNumbers("another_f", {
+              start: 0,
+              end: 2,
+            }),
+            frameRate: 4,
+            repeat: -1,
+          });
+          this.anims.create({
+            key: "another_f.extinction",
+            frames: this.anims.generateFrameNumbers("another_f", {
+              start: 3,
+              end: 41,
+            }),
+            frameRate: 12,
+            repeat: 0,
+          });
+          this.another_f.anims.play("another_f.float");
+
+          this.anims.create({
+            key: "left",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 1,
+              end: 4,
+            }),
+            frameRate: 10,
+            repeat: -1,
+          });
+
+          this.anims.create({
+            key: "turn.left",
+            frames: [{ key: "dude", frame: 0 }],
+            frameRate: 20,
+          });
+
+          this.anims.create({
+            key: "turn.right",
+            frames: [{ key: "dude", frame: 5 }],
+            frameRate: 20,
+          });
+
+          this.anims.create({
+            key: "right",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 6,
+              end: 9,
+            }),
+            frameRate: 10,
+            repeat: -1,
+          });
+
+          this.anims.create({
+            key: "jump.left",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 17,
+              end: 21,
+            }),
+            frameRate: 10,
+            repeat: 0,
+          });
+          this.anims.create({
+            key: "jump.right",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 11,
+              end: 15,
+            }),
+            frameRate: 10,
+            repeat: 0,
+          });
+
+          this.grounds = this.physics.add.staticGroup();
+          this.grounds
+            .create(400, 568, "ground_v")
+            .setScale(16, 2)
+            .refreshBody();
+
+          this.physics.add.collider(this.player, this.grounds);
+
+          this.player.play("right");
+
+          this.tweens.add({
+            targets: this.player,
+            x: this.player.x + 100,
+            duration: 1000,
+            onComplete: () => {
+              this.player.stop("right");
+              this.player.setFrame(5);
+              this.createSpeechBubble(120, 450, 90, 30, "....?", 20, false);
+            },
+          });
+
+          this.isChating = true;
+
+          this.tweens.add({
+            targets: this.another_f,
+            x: this.another_f.x + 100,
+            duration: 1000,
+            onComplete: () => {
+              this.isChating = false;
+            },
+          });
+
+          this.input.keyboard.on("keydown-ENTER", this.showNextDialogue, this);
+        }
+
+        showNextDialogue() {
+          if (this.isChating) return;
+          console.log("this.isChating::", this.isChating);
+          switch (this.dialogIndex) {
+            case 1: {
+              this.isChating = true;
+              this.tweens.add({
+                targets: this.another_f,
+                x: this.another_f.x + 600,
+                duration: 6000,
+                onComplete: () => {
+                  this.isChating = false;
+                },
+              });
+              this.dialogIndex++;
+              break;
+            }
+
+            case 2: {
+              this.isChating = true;
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(650, 450, 90, 30, "🤪😜", 20);
+              this.dialogIndex++;
+              break;
+            }
+
+            case 3: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(650, 450, 90, 30, "👧🏻❤️🥕", 20);
+              this.dialogIndex++;
+              break;
+            }
+
+            case 4: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(650, 450, 90, 30, "👧🏻💔🍋", 20);
+              this.dialogIndex++;
+              break;
+            }
+
+            case 5: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(650, 450, 90, 30, "😂🤣😂", 20);
+              this.dialogIndex++;
+              break;
+            }
+
+            case 6: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.tweens.add({
+                targets: this.player,
+                x: this.player.x + 50,
+                duration: 1000,
+                onStart: () => {
+                  this.player.play("right");
+                },
+                onComplete: () => {
+                  this.player.stop("right");
+                  this.player.setFrame(5);
+                  this.tweens.add({
+                    targets: this.player,
+                    x: this.player.x + 400,
+                    duration: 3000,
+                    delay: 1000,
+                    onStart: () => {
+                      this.player.play("right");
+                      this.currentTextObject.setVisible(false);
+                      this.currentBubble.setVisible(false);
+
+                      this.createSpeechBubble(
+                        650,
+                        450,
+                        90,
+                        30,
+                        "???",
+                        20,
+                        false
+                      );
+                    },
+                    onComplete: () => {
+                      console.log("complete");
+                      this.player.stop("right");
+                      this.player.setFrame(5);
+                      this.isChating = false;
+                    },
+                  });
+                },
+              });
+              this.dialogIndex++;
+              break;
+            }
+
+            case 7: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(550, 450, 90, 30, "괜찮아.", 20);
+
+              this.dialogIndex++;
+              break;
+            }
+
+            case 8: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(
+                550,
+                400,
+                150,
+                60,
+                " 이젠 나를 좀 \n 알 거 같거든",
+                20
+              );
+
+              this.dialogIndex++;
+              break;
+            }
+
+            case 9: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(650, 450, 90, 30, "...", 20);
+
+              this.tweens.add({
+                targets: this.kneel,
+                alpha: { from: 0.8, to: 0 },
+                duration: 1000,
+                ease: "Sine.easeInOut",
+                repeat: 0,
+              });
+
+              this.tweens.add({
+                targets: this.player,
+                x: this.player.x + 50,
+                duration: 1000,
+                onStart: () => {
+                  this.player.play("right");
+                },
+                onComplete: () => {
+                  this.player.setFrame(5);
+                  this.player.stop("right");
+                  this.isChating = false;
+                },
+              });
+
+              this.dialogIndex++;
+              break;
+            }
+
+            case 10: {
+              this.isChating = true;
+
+              this.currentTextObject.setVisible(false);
+              this.currentBubble.setVisible(false);
+
+              this.createSpeechBubble(650, 450, 140, 30, "수고했어. 나.", 20);
+
+              this.dialogIndex++;
+              break;
+            }
+
+            case 11: {
+              this.isChating = true;
+
+              this.tweens.add({
+                targets: this.bg_gray,
+                alpha: { from: 1, to: 0 },
+                duration: 2000,
+
+                onComplete: () => {
+                  this.currentTextObject.setVisible(false);
+                  this.currentBubble.setVisible(false);
+                  this.isChating = false;
+                },
+              });
+
+              this.another_f.anims.play("another_f.extinction");
+              this.dialogIndex++;
+
+              break;
+            }
+
+            case 12: {
+              this.scene.start("Ending");
+
+              break;
+            }
+          }
+        }
+
+        // this.tweens.add({
+        //         targets: this.another,
+        //         x: this.another.x + 400,
+        //         duration: 4000,
+        //       });
+
+        createSpeechBubble(x, y, width, height, quote, fontSize, cc = true) {
+          const bubbleWidth = width;
+          const bubbleHeight = height;
+          const bubblePadding = 10;
+          const arrowHeight = bubbleHeight / 4;
+
+          const bubble = this.add.graphics({ x: x, y: y });
+
+          //  Bubble shadow
+          bubble.fillStyle(0x222222, 0.5);
+          bubble.fillRoundedRect(6, 6, bubbleWidth, bubbleHeight, 16);
+
+          //  Bubble color
+          bubble.fillStyle(0xffffff, 1);
+
+          //  Bubble outline line style
+          bubble.lineStyle(4, 0x565656, 1);
+
+          //  Bubble shape and outline
+          bubble.strokeRoundedRect(0, 0, bubbleWidth, bubbleHeight, 16);
+          bubble.fillRoundedRect(0, 0, bubbleWidth, bubbleHeight, 16);
+
+          //  Calculate arrow coordinates
+          const point1X = Math.floor(bubbleWidth / 7);
+          const point1Y = bubbleHeight;
+          const point2X = Math.floor((bubbleWidth / 7) * 2);
+          const point2Y = bubbleHeight;
+          const point3X = Math.floor(bubbleWidth / 7);
+          const point3Y = Math.floor(bubbleHeight + arrowHeight);
+
+          //  Bubble arrow shadow
+          bubble.lineStyle(4, 0x222222, 0.5);
+          bubble.lineBetween(point2X - 1, point2Y + 6, point3X + 2, point3Y);
+
+          //  Bubble arrow fill
+          bubble.fillTriangle(
+            point1X,
+            point1Y,
+            point2X,
+            point2Y,
+            point3X,
+            point3Y
+          );
+          bubble.lineStyle(2, 0x565656, 1);
+          bubble.lineBetween(point2X, point2Y, point3X, point3Y);
+          bubble.lineBetween(point1X, point1Y, point3X, point3Y);
+
+          const content = this.add.text(0, 0, "", {
+            fontFamily: "PFStardust",
+            fontSize,
+            color: "#000000",
+            wordWrap: { width: bubbleWidth - bubblePadding * 2 },
+          });
+
+          content.setOrigin(0.5, 0.25);
+
+          const b = content.getBounds();
+
+          content.setPosition(
+            bubble.x + bubbleWidth / 2 - b.width / 2,
+            bubble.y + bubbleHeight / 2 - b.height / 2 + 5
+          );
+          this.typeText(content, quote, 50, cc);
+
+          this.currentTextObject = content;
+          this.currentBubble = bubble;
+        }
+
+        typeText(textObject, text, delay, cc) {
+          let index = 0;
+          const length = text.length;
+
+          this.time.addEvent({
+            delay: delay,
+            callback: () => {
+              textObject.text += text[index];
+              index++;
+              if (index === length) {
+                if (cc) this.isChating = false;
+                this.time.removeEvent(this);
+              }
+            },
+            repeat: length - 1,
+          });
+        }
+      }
+
+      class Stage2 extends Phaser.Scene {
+        constructor() {
+          super("Stage2");
+        }
+
+        lastItem = 5;
+        face = "right";
+
+        preload() {
+          this.load.image("ground_v", "assets/ground_v.png");
+          this.load.image("ground_h", "assets/ground_h.png");
+          this.load.spritesheet("dude", "assets/me.png", {
+            frameWidth: 64,
+            frameHeight: 64,
+          });
+          this.load.image("trampolin", "assets/trampolin.png");
+
+          this.load.image("+1", "assets/item1.png");
+          this.load.image("-1", "assets/item2.png");
+          this.load.image("+2", "assets/item3.png");
+          this.load.image("-2", "assets/item4.png");
+          this.load.image("+3", "assets/item6.png");
+          this.load.image("-3", "assets/item5.png");
+
+          this.load.image("o", "assets/o.png");
+          this.load.image("x", "assets/x.png");
+          this.load.image("q", "assets/q.png");
+
+          this.load.image("right_arrow", "assets/right_arrow.png");
+
+          this.load.spritesheet("another2", "assets/another_2.png", {
+            frameWidth: 32,
+            frameHeight: 32,
+          });
+        }
+
+        create() {
+          this.createDialogBox("북극성", "");
+          this.o = this.add.image(150, 300, "o");
+          this.x = this.add.image(150, 335, "x");
+          this.item1 = this.add.image(190, 300, "+1");
+          this.item2 = this.add.image(190, 335, "-1");
+          this.item3 = this.add.image(230, 300, "+2");
+          this.item4 = this.add.image(230, 335, "-2");
+
+          this.item5 = this.add.image(270, 300, "+3");
+          this.item6 = this.add.image(270, 335, "-3");
+          this.q5 = this.add.image(310, 300, "q");
+          this.q6 = this.add.image(310, 335, "q");
+
+          this.another2 = this.add.sprite(0, 500, "another2");
+
+          this.anims.create({
+            key: "another2.float",
+            frames: this.anims.generateFrameNumbers("another2", {
+              start: 0,
+              end: 2,
+            }),
+            frameRate: 4,
+            repeat: -1,
+          });
+          this.another2.anims.play("another2.float");
+
+          this.grounds = this.physics.add.staticGroup();
+          this.grounds
+            .create(400, 568, "ground_v")
+            .setScale(16, 2)
+            .refreshBody();
+
+          this.trampolins = this.physics.add.staticGroup();
+
+          // 그룹에 트램펄린 추가
+          // this.trampolins.create(20, 190, "trampolin");
+
+          // 바닥과 트램펄린 그룹 간의 충돌 설정
+          // this.physics.add.collider(this.grounds, this.trampolins);
+
+          this.player = this.physics.add.sprite(100, 506, "dude");
+          this.physics.add.collider(this.player, this.grounds);
+
+          this.input.keyboard.on("keydown-ENTER", this.next, this);
+
+          this.anims.create({
+            key: "left",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 1,
+              end: 4,
+            }),
+            frameRate: 10,
+            repeat: -1,
+          });
+
+          this.anims.create({
+            key: "turn.left",
+            frames: [{ key: "dude", frame: 0 }],
+            frameRate: 20,
+          });
+
+          this.anims.create({
+            key: "turn.right",
+            frames: [{ key: "dude", frame: 5 }],
+            frameRate: 20,
+          });
+
+          this.anims.create({
+            key: "right",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 6,
+              end: 9,
+            }),
+            frameRate: 10,
+            repeat: -1,
+          });
+
+          this.anims.create({
+            key: "jump.left",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 17,
+              end: 21,
+            }),
+            frameRate: 10,
+            repeat: 0,
+          });
+          this.anims.create({
+            key: "jump.right",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 11,
+              end: 15,
+            }),
+            frameRate: 10,
+            repeat: 0,
+          });
+        }
+
+        next() {
+          this.input.keyboard.off("keydown-ENTER", this.next, this);
+          this.plusItem = this.physics.add.group();
+          this.bounce(this.plusItem.create(100, 0, "+1"));
+          this.bounce(this.plusItem.create(200, 0, "+2"));
+          this.bounce(this.plusItem.create(300, 0, "+3"));
+          this.bounce(this.plusItem.create(400, 0, "+2"));
+          this.bounce(this.plusItem.create(500, 0, "+3"));
+          this.physics.add.collider(this.plusItem, this.grounds);
+          this.physics.add.overlap(
+            this.player,
+            this.plusItem,
+            this.overlapItem,
+            null,
+            this
+          );
+          this.minusItem = this.physics.add.group();
+          this.bounce(this.plusItem.create(150, 0, "-1"));
+          this.bounce(this.plusItem.create(250, 0, "-2"));
+          this.bounce(this.plusItem.create(350, 0, "-3"));
+          this.bounce(this.plusItem.create(450, 0, "-2"));
+          this.bounce(this.plusItem.create(550, 0, "-3"));
+          this.physics.add.collider(this.minusItem, this.grounds);
+          this.physics.add.overlap(
+            this.player,
+            this.minusItem,
+            this.overlapItem,
+            null,
+            this
+          );
+
+          this.dialogBox.setVisible(false);
+          this.nameText.setVisible(false);
+          this.dialogText.setVisible(false);
+
+          this.o.setVisible(false);
+          this.x.setVisible(false);
+          this.item1.setVisible(false);
+          this.item2.setVisible(false);
+          this.item3.setVisible(false);
+          this.item4.setVisible(false);
+
+          this.item5.setVisible(false);
+          this.item6.setVisible(false);
+          this.q5.setVisible(false);
+          this.q6.setVisible(false);
+        }
+
+        createDialogBox(name, dialog) {
+          const dialogWidth = 600;
+          const dialogHeight = 150;
+          const dialogX = this.cameras.main.centerX - dialogWidth / 2;
+          const dialogY = this.cameras.main.centerY - dialogHeight / 2;
+
+          // 다이얼로그 박스 그래픽
+          this.dialogBox = this.add.graphics();
+          this.dialogBox.fillStyle(0x000000, 0.7);
+          this.dialogBox.fillRoundedRect(
+            dialogX,
+            dialogY,
+            dialogWidth,
+            dialogHeight,
+            20
+          );
+          this.dialogBox.lineStyle(4, 0xffffff, 1);
+          this.dialogBox.strokeRoundedRect(
+            dialogX,
+            dialogY,
+            dialogWidth,
+            dialogHeight,
+            20
+          );
+
+          // 말하는 사람의 이름 텍스트
+          this.nameText = this.add.text(dialogX + 20, dialogY + 20, "", {
+            fontFamily: "PFStardust",
+            fontSize: 24,
+            color: "#fff",
+            fontStyle: "bold",
+          });
+
+          // 대사 텍스트
+          this.dialogText = this.add.text(dialogX + 20, dialogY + 60, "", {
+            fontFamily: "PFStardust",
+            fontSize: 20,
+            color: "#fff",
+            wordWrap: { width: dialogWidth - 40, useAdvancedWrap: true },
+          });
+
+          this.nameText.setText(name);
+          this.dialogText.setText(dialog);
+        }
+
+        follow(object, target, gapX, gapY) {
+          target.setPosition(object.x - gapX, object.y - gapY);
+        }
+        bounce(object) {
+          object.setBounce(1);
+          object.setCollideWorldBounds(true);
+          object.setVelocity(Phaser.Math.Between(-200, 200), 20);
+          return object;
+        }
+
+        overlapItem(player, item) {
+          item.disableBody(true, true);
+
+          if (item.texture.key.startsWith("+")) {
+            // item1의 경우
+            this.lastItem--;
+            this.showFloatingText(player, "+1", "green");
+          } else if (item.texture.key.startsWith("-")) {
+            // item2의 경우
+            this.showFloatingText(player, "-1", "red");
+            this.tweens.add({
+              targets: player,
+              tint: 0xff0000, // 빨간색으로 변환
+              duration: 100,
+              yoyo: true,
+              onComplete: () => {
+                player.clearTint();
+              },
+            });
+
+            this.itemEffectActive = true;
+            player.setVelocityX(-50);
+            player.setVelocityY(-100);
+
+            // 0.5초 후에 속도를 다시 0으로 설정
+            this.time.delayedCall(
+              500,
+              () => {
+                this.itemEffectActive = false; // 효과 비활성화
+              },
+              [],
+              this
+            );
+          }
+          if (this.lastItem <= 0) {
+            const right_arrow = this.add.image(750, 500, "right_arrow");
+
+            this.tweens.add({
+              targets: right_arrow,
+              x: { from: 750, to: 760 },
+              alpha: { from: 0, to: 1 },
+              duration: 1000,
+              ease: "Sine.easeInOut",
+              repeat: -1,
+            });
+
+            // 특정 위치에 도달했는지 체크
+            const targetX = 750;
+            const targetY = 500;
+            const tolerance = 10; // 위치에 도달했는지 판단할 허용 오차
+          }
+        }
+
+        showFloatingText(player, text, color) {
+          const floatingText = this.add.text(player.x, player.y - 50, text, {
+            font: "32px Arial",
+            fill: color,
+          });
+          this.tweens.add({
+            targets: floatingText,
+            y: player.y - 100,
+            alpha: 0,
+            duration: 1000,
+            ease: "Power1",
+            onComplete: () => {
+              floatingText.destroy();
+            },
+          });
+        }
+
+        overlapTrampolin() {
+          this.player.anims.play(`jump.${this.face}`, true);
+          this.player.setVelocityY(-600);
+        }
+
+        update() {
+          const cursors = this.input.keyboard.createCursorKeys();
+          const player = this.player;
+          player.setCollideWorldBounds(true);
+
+          if (cursors.left.isDown) {
+            player.setVelocityX(-160);
+            if (player.body.touching.down) {
+              this.face = "left";
+              player.anims.play("left", true);
+            }
+          } else if (cursors.right.isDown) {
+            player.setVelocityX(160);
+            if (player.body.touching.down) {
+              this.face = "right";
+              player.anims.play("right", true);
+            }
+          } else {
+            player.setVelocityX(0);
+
+            if (player.body.touching.down) {
+              player.anims.play(`turn.${this.face}`);
+            }
+          }
+
+          if (cursors.up.isDown && player.body.touching.down) {
+            player.anims.play(`jump.${this.face}`, true);
+            player.setVelocityY(-300);
+          }
+
+          this.follow(this.player, this.another2, 40, 0);
+
+          // 점프 애니메이션이 끝나면 착지 후 다른 애니메이션으로 전환
+          player.on("animationcomplete", function (animation) {
+            if (animation.key === "jump") {
+              if (cursors.left.isDown) {
+                player.anims.play("left", true);
+              } else if (cursors.right.isDown) {
+                player.anims.play("right", true);
+              } else {
+                player.anims.play("turn");
+              }
+            }
+          });
+
+          // 특정 위치에 도달했는지 체크
+          const targetX = 750;
+          const targetY = 500;
+          const tolerance = 10; // 위치에 도달했는지 판단할 허용 오차
+
+          if (
+            Phaser.Math.Distance.Between(
+              this.player.x,
+              this.player.y,
+              targetX,
+              targetY
+            ) < tolerance
+          ) {
+            this.scene.start("Stage3");
+          }
+        }
+      }
+
+      class Stage3 extends Phaser.Scene {
+        constructor() {
+          super("Stage3");
+        }
+
+        isClear = false;
+        face = "right";
+
+        preload() {
+          this.load.spritesheet("dude", "assets/me.png", {
+            frameWidth: 64,
+            frameHeight: 64,
+          });
+          this.load.spritesheet("another3", "assets/another_3.png", {
+            frameWidth: 32,
+            frameHeight: 32,
+          });
+          this.load.image("ground_v", "assets/ground_v.png");
+          this.load.image("o", "assets/o.png");
+          this.load.image("x", "assets/x.png");
+          this.load.image("+1", "assets/item1.png");
+          this.load.image("-1", "assets/item2.png");
+          this.load.image("+2", "assets/item3.png");
+          this.load.image("-2", "assets/item4.png");
+          this.load.image("+3", "assets/item5.png");
+          this.load.image("-3", "assets/item6.png");
+          this.load.image("+4", "assets/item7.png");
+          this.load.image("-4", "assets/item8.png");
+          this.load.image("right_arrow", "assets/right_arrow.png");
+        }
+
+        next2() {
+          this.createItem();
+
+          this.dialogBox.setVisible(false);
+          this.nameText.setVisible(false);
+          this.dialogText.setVisible(false);
+
+          this.o.setVisible(false);
+          this.x.setVisible(false);
+          this.item1.setVisible(false);
+          this.item2.setVisible(false);
+          this.item3.setVisible(false);
+          this.item4.setVisible(false);
+
+          this.item5.setVisible(false);
+          this.item6.setVisible(false);
+          this.item7.setVisible(false);
+          this.item8.setVisible(false);
+        }
+
+        createItem() {
+          const _items = ["+1", "-1", "+2", "-2", "+3", "-3", "+4", "-4"];
+          setInterval(() => {
+            const idx = Math.floor(Math.random() * (8 - 0) + 0);
+            this.item = this.items.create(800, 500, _items[idx]);
+            this.tweens.add({
+              targets: this.item,
+              x: { from: 800, to: -10 },
+              duration: 2000,
+            });
+          }, 1000);
+        }
+
+        create() {
+          this.input.keyboard.on("keydown-ENTER", this.next2, this);
+
+          this.createDialogBox("북극성", "");
+          this.o = this.add.image(150, 300, "o");
+          this.x = this.add.image(150, 335, "x");
+          this.item1 = this.add.image(190, 300, "+1");
+          this.item2 = this.add.image(190, 335, "-1");
+          this.item3 = this.add.image(230, 300, "+2");
+          this.item4 = this.add.image(230, 335, "-2");
+
+          this.item5 = this.add.image(270, 300, "+3");
+          this.item6 = this.add.image(270, 335, "-3");
+          this.item7 = this.add.image(310, 300, "+4");
+          this.item8 = this.add.image(310, 335, "-4");
+
+          const right_arrow = this.add.image(750, 500, "right_arrow");
+
+          this.tweens.add({
+            targets: right_arrow,
+            x: { from: 750, to: 760 },
+            alpha: { from: 0, to: 1 },
+            duration: 1000,
+            ease: "Sine.easeInOut",
+            repeat: -1,
+          });
+
+          this.items = this.physics.add.group({
+            allowGravity: false,
+          });
+          // this.createItem();
+
+          this.another3 = this.add.sprite(0, 500, "another3");
+          this.anims.create({
+            key: "another3.float",
+            frames: this.anims.generateFrameNumbers("another3", {
+              start: 0,
+              end: 2,
+            }),
+            frameRate: 4,
+            repeat: -1,
+          });
+          this.another3.anims.play("another3.float");
+
+          this.grounds = this.physics.add.staticGroup();
+          this.grounds
+            .create(400, 568, "ground_v")
+            .setScale(16, 2)
+            .refreshBody();
+
+          this.player = this.physics.add.sprite(100, 506, "dude");
+          this.physics.add.collider(this.player, this.grounds);
+          this.physics.add.overlap(
+            this.player,
+            this.items,
+            this.overlapItem,
+            null,
+            this
+          );
+
+          this.anims.create({
+            key: "left",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 1,
+              end: 4,
+            }),
+            frameRate: 10,
+            repeat: -1,
+          });
+
+          this.anims.create({
+            key: "turn.left",
+            frames: [{ key: "dude", frame: 0 }],
+            frameRate: 20,
+          });
+
+          this.anims.create({
+            key: "turn.right",
+            frames: [{ key: "dude", frame: 5 }],
+            frameRate: 20,
+          });
+
+          this.anims.create({
+            key: "right",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 6,
+              end: 9,
+            }),
+            frameRate: 10,
+            repeat: -1,
+          });
+
+          this.anims.create({
+            key: "jump.left",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 17,
+              end: 21,
+            }),
+            frameRate: 10,
+            repeat: 0,
+          });
+          this.anims.create({
+            key: "jump.right",
+            frames: this.anims.generateFrameNumbers("dude", {
+              start: 11,
+              end: 15,
+            }),
+            frameRate: 10,
+            repeat: 0,
+          });
+        }
+
+        follow(object, target, gapX, gapY) {
+          target.setPosition(object.x - gapX, object.y - gapY);
+        }
+
+        createDialogBox(name, dialog) {
+          const dialogWidth = 600;
+          const dialogHeight = 150;
+          const dialogX = this.cameras.main.centerX - dialogWidth / 2;
+          const dialogY = this.cameras.main.centerY - dialogHeight / 2;
+
+          // 다이얼로그 박스 그래픽
+          this.dialogBox = this.add.graphics();
+          this.dialogBox.fillStyle(0x000000, 0.7);
+          this.dialogBox.fillRoundedRect(
+            dialogX,
+            dialogY,
+            dialogWidth,
+            dialogHeight,
+            20
+          );
+          this.dialogBox.lineStyle(4, 0xffffff, 1);
+          this.dialogBox.strokeRoundedRect(
+            dialogX,
+            dialogY,
+            dialogWidth,
+            dialogHeight,
+            20
+          );
+
+          // 말하는 사람의 이름 텍스트
+          this.nameText = this.add.text(dialogX + 20, dialogY + 20, "", {
+            fontFamily: "PFStardust",
+            fontSize: 24,
+            color: "#fff",
+            fontStyle: "bold",
+          });
+
+          // 대사 텍스트
+          this.dialogText = this.add.text(dialogX + 20, dialogY + 60, "", {
+            fontFamily: "PFStardust",
+            fontSize: 20,
+            color: "#fff",
+            wordWrap: { width: dialogWidth - 40, useAdvancedWrap: true },
+          });
+
+          this.nameText.setText(name);
+          this.dialogText.setText(dialog);
+        }
+
+        next() {
+          this.input.keyboard.off("keydown-ENTER", this.next, this);
+          this.plusItem = this.physics.add.group();
+          this.bounce(this.plusItem.create(100, 0, "+1"));
+          this.bounce(this.plusItem.create(200, 0, "+2"));
+          this.bounce(this.plusItem.create(300, 0, "+3"));
+          this.bounce(this.plusItem.create(400, 0, "+2"));
+          this.bounce(this.plusItem.create(500, 0, "+3"));
+          this.physics.add.collider(this.plusItem, this.grounds);
+          this.physics.add.overlap(
+            this.player,
+            this.plusItem,
+            this.overlapItem,
+            null,
+            this
+          );
+          this.minusItem = this.physics.add.group();
+          this.bounce(this.plusItem.create(150, 0, "-1"));
+          this.bounce(this.plusItem.create(250, 0, "-2"));
+          this.bounce(this.plusItem.create(350, 0, "-3"));
+          this.bounce(this.plusItem.create(450, 0, "-2"));
+          this.bounce(this.plusItem.create(550, 0, "-3"));
+          this.physics.add.collider(this.minusItem, this.grounds);
+          this.physics.add.overlap(
+            this.player,
+            this.minusItem,
+            this.overlapItem,
+            null,
+            this
+          );
+
+          this.dialogBox.setVisible(false);
+          this.nameText.setVisible(false);
+          this.dialogText.setVisible(false);
+
+          this.o.setVisible(false);
+          this.x.setVisible(false);
+          this.item1.setVisible(false);
+          this.item2.setVisible(false);
+          this.item3.setVisible(false);
+          this.item4.setVisible(false);
+
+          this.item5.setVisible(false);
+          this.item6.setVisible(false);
+          this.item7.setVisible(false);
+          this.item8.setVisible(false);
+        }
+
+        overlapItem(player, item) {
+          item.disableBody(true, true);
+          this.eatenItemCount++;
+          if (item.texture.key.startsWith("+")) {
+            // item1의 경우
+            this.showFloatingText(player, "+1", "green");
+          } else if (item.texture.key.startsWith("-")) {
+            // item2의 경우
+            this.showFloatingText(player, "-1", "red");
+            this.tweens.add({
+              targets: player,
+              tint: 0xff0000, // 빨간색으로 변환
+              duration: 100,
+              yoyo: true,
+              onComplete: () => {
+                player.clearTint();
+              },
+            });
+            this.itemEffectActive = true;
+            player.setVelocityX(-50);
+            player.setVelocityY(-100);
+            // 0.5초 후에 속도를 다시 0으로 설정
+            this.time.delayedCall(
+              500,
+              () => {
+                this.itemEffectActive = false; // 효과 비활성화
+              },
+              [],
+              this
+            );
+          }
+        }
+
+        showFloatingText(player, text, color) {
+          const floatingText = this.add.text(player.x, player.y - 50, text, {
+            font: "32px Arial",
+            fill: color,
+          });
+          this.tweens.add({
+            targets: floatingText,
+            y: player.y - 100,
+            alpha: 0,
+            duration: 1000,
+            ease: "Power1",
+            onComplete: () => {
+              floatingText.destroy();
+            },
+          });
+        }
+
+        update() {
+          const cursors = this.input.keyboard.createCursorKeys();
+          const player = this.player;
+          player.setCollideWorldBounds(true);
+
+          if (cursors.left.isDown) {
+            player.setVelocityX(-160);
+            if (player.body.touching.down) {
+              this.face = "left";
+              player.anims.play("left", true);
+            }
+          } else if (cursors.right.isDown) {
+            player.setVelocityX(160);
+            if (player.body.touching.down) {
+              this.face = "right";
+              player.anims.play("right", true);
+            }
+          } else {
+            player.setVelocityX(0);
+
+            if (player.body.touching.down) {
+              player.anims.play(`turn.${this.face}`);
+            }
+          }
+
+          if (cursors.up.isDown && player.body.touching.down) {
+            player.anims.play(`jump.${this.face}`, true);
+            player.setVelocityY(-300);
+          }
+
+          this.follow(this.player, this.another3, 40, 0);
+
+          // 점프 애니메이션이 끝나면 착지 후 다른 애니메이션으로 전환
+          player.on("animationcomplete", function (animation) {
+            if (animation.key === "jump") {
+              if (cursors.left.isDown) {
+                player.anims.play("left", true);
+              } else if (cursors.right.isDown) {
+                player.anims.play("right", true);
+              } else {
+                player.anims.play("turn");
+              }
+            }
+          });
+
+          // 특정 위치에 도달했는지 체크
+          const targetX = 750;
+          const targetY = 500;
+          const tolerance = 20; // 위치에 도달했는지 판단할 허용 오차
+
+          if (
+            Phaser.Math.Distance.Between(
+              this.player.x,
+              this.player.y,
+              targetX,
+              targetY
+            ) < tolerance
+          ) {
+            this.scene.start("Epilogue");
+          }
+        }
+      }
+
+      class Ending extends Phaser.Scene {
+        constructor() {
+          super("Ending");
+        }
+        preload() {
+          this.load.image("reload", "assets/reload.png");
+        }
+
+        create() {
+          this.texts = [
+            this.add
+              .text(400, 260, " 나에 대해 알아가는 것은", {
+                fontSize: "24px",
+                fill: "#fff",
+                fontFamily: "PFStardust",
+              })
+              .setOrigin(0.5),
+
+            this.add
+              .text(400, 300, " 나를 아끼고 돌보는 방법이기에", {
+                fontSize: "24px",
+                fill: "#fff",
+                fontFamily: "PFStardust",
+              })
+              .setOrigin(0.5),
+
+            this.add
+              .text(400, 250, " 새로운 나를 발견하는 여정", {
+                fontSize: "24px",
+                fill: "#fff",
+                fontFamily: "PFStardust",
+              })
+              .setOrigin(0.5),
+
+            this.add
+              .text(400, 300, " 화해가 응원합니다.", {
+                fontSize: "24px",
+                fill: "#fff",
+                fontFamily: "PFStardust",
+              })
+              .setOrigin(0.5),
+          ];
+
+          this.texts.forEach((v) => v.setAlpha(0));
+
+          this.fadeIn(this.texts[0], () => {
+            this.fadeIn(this.texts[1], () => {
+              this.fadeOut(this.texts[0], 1000);
+              this.fadeOut(this.texts[1], 1000, () => {
+                this.fadeIn(this.texts[2], () => {
+                  this.fadeIn(this.texts[3], () => {
+                    const restart = this.add
+                      .text(400, 355, " 다시하기", {
+                        fontSize: "24px",
+                        fill: "#fff",
+                        fontFamily: "PFStardust",
+                      })
+                      .setOrigin(0.5);
+                    const restart_icon = this.add.image(330, 350, "reload");
+
+                    restart.setInteractive();
+                    restart_icon.setInteractive();
+
+                    restart.on("pointerdown", () => {
+                      this.scene.start("Boot");
+                    });
+                    restart_icon.on("pointerdown", () => {
+                      this.scene.start("Boot");
+                    });
+                  });
+                });
+              });
+            });
+          });
+        }
+
+        fadeIn(text, onComplete) {
+          // 페이드 인
+          this.tweens.add({
+            targets: text,
+            alpha: { from: 0, to: 1 },
+            duration: 1500,
+            delay: 0,
+            onComplete,
+          });
+        }
+
+        fadeOut(text, delay, onComplete) {
+          // 페이드 아웃
+          this.tweens.add({
+            targets: text,
+            alpha: { from: 1, to: 0 },
+            duration: 1000,
+            delay,
+            onComplete,
+          });
+        }
+      }
+      var config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        backgroundColor: "#2d2d2d",
+        physics: {
+          default: "arcade",
+          arcade: {
+            gravity: { y: 700 },
+            debug: false,
+          },
+        },
+
+        scene: [Epilogue, Boot, Stage3, Stage2, Stage1, Prologue, Ending],
+      };
+
+      var game = new Phaser.Game(config);
+    </script>
+  </body>
+</html>
+
+`
